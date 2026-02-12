@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Roblox Video Frame Converter</title>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.4/dist/ffmpeg.min.js"></script>
+<style>
+body{
+    background:#0f172a;
+    color:white;
+    font-family:monospace;
+    text-align:center;
+}
+.container{
+    max-width:720px;
+    margin:auto;
+    padding:20px;
+}
+input,button{
+    margin:5px;
+    padding:10px;
+    font-size:14px;
+}
+button{
+    cursor:pointer;
+}
+#log{
+    background:black;
+    color:#00ff00;
+    height:240px;
+    overflow:auto;
+    padding:10px;
+    text-align:left;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎬 Roblox Video → Frame Tool</h1>
+
+    <input type="file" id="videoInput" accept="video/*"><br>
+
+    Frame Size (WxH): 
+    <input id="size" placeholder="854x480"><br>
+
+    ZIP Name:
+    <input id="zipName" placeholder="frames.zip"><br>
+
+    <button onclick="convert()">🚀 Convert</button>
+
+    <div id="log"></div>
+</div>
+
+<script>
+const { createFFmpeg, fetchFile } = FFmpeg;
+const ffmpeg = createFFmpeg({ log: false });
+
+const log = msg => {
+    const el = document.getElementById("log");
+    el.innerHTML += msg + "<br>";
+    el.scrollTop = el.scrollHeight;
+}
+
+async function convert(){
+    const file = document.getElementById("videoInput").files[0];
+    if(!file) return alert("Select video first");
+
+    let size = document.getElementById("size").value || "854x480";
+    let zipName = document.getElementById("zipName").value || "frames.zip";
+
+    log("Loading ffmpeg...");
+    await ffmpeg.load();
+
+    log("Importing video...");
+    ffmpeg.FS('writeFile','input.mp4', await fetchFile(file));
+
+    log("Converting video → frames...");
+    await ffmpeg.run('-i','input.mp4','-vf',`scale=${size},fps=20`,'frame_%05d.jpg');
+
+    log("Zipping frames...");
+    await ffmpeg.run('-i','frame_%05d.jpg',zipName);
+
+    const data = ffmpeg.FS('readFile',zipName);
+    const blob = new Blob([data.buffer], {type:'application/zip'});
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = zipName;
+    a.click();
+
+    log("DONE ✔");
+}
+</script>
+
+</body>
+</html>
